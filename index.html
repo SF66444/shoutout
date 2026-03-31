@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StoryQueue • Upload</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
+        body { font-family: 'Inter', system_ui, sans-serif; }
+        .title-font { font-family: 'Space Grotesk', sans-serif; }
+        .dropzone { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .dropzone-active { background-color: #111111; border-color: #fffc00; transform: scale(1.02); }
+        .success-pop { animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body class="bg-[#0a0a0a] text-white min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full mx-auto px-6 py-12">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-x-3">
+                <div class="w-9 h-9 bg-[#fffc00] rounded-2xl flex items-center justify-center text-black text-2xl shadow-inner">📸</div>
+                <h1 class="title-font text-3xl tracking-tighter">StoryQueue</h1>
+            </div>
+            <div class="px-4 py-1.5 bg-white/10 text-white text-xs font-medium rounded-3xl flex items-center gap-x-1">
+                <div class="w-2 h-2 bg-[#fffc00] rounded-full animate-pulse"></div>
+                LIVE
+            </div>
+        </div>
+
+        <div class="text-center mb-8">
+            <h2 class="text-4xl font-semibold tracking-tighter title-font mb-2">Drop your moment</h2>
+            <p class="text-zinc-400 text-lg">Your photo will instantly join the queue.<br>Only the app can see or delete it.</p>
+        </div>
+
+        <!-- Upload Card -->
+        <div id="upload-card" class="bg-zinc-900 rounded-3xl p-8 shadow-2xl border border-white/10">
+            <div id="dropzone" class="dropzone border-2 border-dashed border-zinc-700 hover:border-[#fffc00]/70 rounded-3xl h-72 flex flex-col items-center justify-center text-center cursor-pointer">
+                <input type="file" id="file-input" accept="image/png,image/jpeg" class="hidden">
+                <div class="w-16 h-16 mb-6 bg-white/10 rounded-2xl flex items-center justify-center text-5xl">📤</div>
+                <p class="text-xl font-medium mb-1">Drop photo here</p>
+                <p class="text-zinc-400 text-sm mb-6">or tap to browse</p>
+                <div class="flex items-center gap-x-4 text-xs text-zinc-500">
+                    <span class="px-3 py-1 bg-white/10 rounded-xl">PNG</span>
+                    <span class="px-3 py-1 bg-white/10 rounded-xl">JPG</span>
+                    <span class="px-3 py-1 bg-white/10 rounded-xl">JPEG</span>
+                    <span class="text-zinc-600">•</span>
+                    <span>Max 10 MB</span>
+                </div>
+            </div>
+
+            <!-- Preview -->
+            <div id="preview-section" class="hidden mt-6">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-sm font-medium text-zinc-400">Your photo</p>
+                    <button onclick="clearSelection()" class="text-zinc-400 hover:text-white flex items-center gap-x-1 text-xs">
+                        <span class="text-lg leading-none">×</span> CHANGE
+                    </button>
+                </div>
+                <div class="bg-black rounded-2xl overflow-hidden border border-white/10 mb-6">
+                    <img id="preview-image" class="w-full aspect-square object-cover" alt="Preview">
+                </div>
+                <div class="flex justify-between text-sm mb-6">
+                    <div>
+                        <p id="preview-name" class="font-medium"></p>
+                        <p id="preview-size" class="text-zinc-400 text-xs"></p>
+                    </div>
+                    <div class="text-emerald-400 text-xs font-medium flex items-center gap-x-1">
+                        <span class="w-2 h-2 bg-emerald-400 rounded-full"></span> READY
+                    </div>
+                </div>
+                <button onclick="handleUpload()" id="upload-btn"
+                        class="w-full h-14 bg-[#fffc00] hover:bg-[#fffc00]/90 text-black font-semibold text-lg rounded-2xl flex items-center justify-center gap-x-2 transition-all active:scale-95">
+                    <span>UPLOAD TO STORYQUEUE</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2 2 2 0 01-2 2v-3" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7h3a2 2 0 012 2v9a2 2 0 01-2 2 2 2 0 01-2 2v-3" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Success -->
+        <div id="success-section" class="hidden mt-6 bg-emerald-900/70 border border-emerald-400/30 rounded-3xl p-6 success-pop">
+            <div class="flex items-center gap-x-3 mb-4">
+                <div class="text-4xl">✅</div>
+                <div>
+                    <p class="font-semibold text-xl">Photo uploaded!</p>
+                    <p id="uploaded-filename" class="font-mono text-emerald-300 text-sm"></p>
+                </div>
+            </div>
+            <p class="text-emerald-200 text-sm">It is now in the queue.<br>The app will show it in order.</p>
+            <div class="mt-6 flex gap-x-3">
+                <button onclick="resetUI()" class="flex-1 h-12 bg-white/10 hover:bg-white/20 rounded-2xl font-medium">UPLOAD ANOTHER</button>
+                <button onclick="window.location.reload()" class="flex-1 h-12 bg-[#fffc00] text-black rounded-2xl font-medium">DONE</button>
+            </div>
+        </div>
+
+        <div id="status" class="mt-6 text-center text-xs text-zinc-500"></div>
+    </div>
+
+    <script>
+        let currentFile = null;
+        let objectUrl = null;
+
+        function validateFile(file) {
+            if (!file) throw new Error("No file selected");
+            if (!['image/png', 'image/jpeg'].includes(file.type)) throw new Error("Only PNG, JPG and JPEG files are allowed");
+            if (file.size > 10 * 1024 * 1024) throw new Error("File is too large. Maximum 10 MB allowed.");
+            return true;
+        }
+
+        async function handleUpload() {
+            const btn = document.getElementById('upload-btn');
+            const originalHTML = btn.innerHTML;
+
+            try {
+                btn.disabled = true;
+                btn.innerHTML = `<svg class="animate-spin h-5 w-5 mr-2 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>UPLOADING...`;
+
+                document.getElementById('status').innerHTML = 'Uploading securely...';
+
+                validateFile(currentFile);
+
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(currentFile);
+                });
+
+                const res = await fetch('/.netlify/functions/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        base64: base64,
+                        mimeType: currentFile.type
+                    })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Upload failed');
+                }
+
+                const data = await res.json();
+                document.getElementById('uploaded-filename').textContent = data.filename;
+                document.getElementById('upload-card').classList.add('hidden');
+                document.getElementById('success-section').classList.remove('hidden');
+                document.getElementById('status').innerHTML = `<span class="text-emerald-400">✓ Uploaded as ${data.filename}</span>`;
+
+            } catch (err) {
+                document.getElementById('status').innerHTML = `<span class="text-red-400">⚠️ ${err.message}</span>`;
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        function showPreview(file) {
+            currentFile = file;
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            objectUrl = URL.createObjectURL(file);
+
+            document.getElementById('dropzone').classList.add('hidden');
+            document.getElementById('preview-section').classList.remove('hidden');
+
+            document.getElementById('preview-image').src = objectUrl;
+            document.getElementById('preview-name').textContent = file.name;
+            document.getElementById('preview-size').textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+        }
+
+        function clearSelection() {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+            currentFile = null;
+            objectUrl = null;
+            document.getElementById('preview-section').classList.add('hidden');
+            document.getElementById('dropzone').classList.remove('hidden');
+            document.getElementById('file-input').value = '';
+        }
+
+        function resetUI() {
+            clearSelection();
+            document.getElementById('success-section').classList.add('hidden');
+            document.getElementById('upload-card').classList.remove('hidden');
+            document.getElementById('status').innerHTML = '';
+        }
+
+        function setupDropzone() {
+            const dropzone = document.getElementById('dropzone');
+            const fileInput = document.getElementById('file-input');
+
+            dropzone.addEventListener('click', () => fileInput.click());
+
+            fileInput.addEventListener('change', e => {
+                if (e.target.files[0]) {
+                    try {
+                        validateFile(e.target.files[0]);
+                        showPreview(e.target.files[0]);
+                    } catch (err) {
+                        document.getElementById('status').innerHTML = `<span class="text-red-400">${err.message}</span>`;
+                    }
+                }
+            });
+
+            dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dropzone-active'); });
+            dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dropzone-active'));
+            dropzone.addEventListener('drop', e => {
+                e.preventDefault();
+                dropzone.classList.remove('dropzone-active');
+                if (e.dataTransfer.files[0]) {
+                    try {
+                        validateFile(e.dataTransfer.files[0]);
+                        showPreview(e.dataTransfer.files[0]);
+                    } catch (err) {
+                        document.getElementById('status').innerHTML = `<span class="text-red-400">${err.message}</span>`;
+                    }
+                }
+            });
+        }
+
+        window.onload = setupDropzone;
+    </script>
+</body>
+</html>
