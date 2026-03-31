@@ -21,7 +21,7 @@ exports.handler = async (event) => {
 
     const buffer = Buffer.from(base64, 'base64');
 
-    // Resize to exact 1080×1920 Snapchat story size
+    // Resize to exact Snapchat 1080×1920
     let processed = await sharp(buffer)
         .resize({
             width: 1080,
@@ -31,13 +31,13 @@ exports.handler = async (event) => {
         })
         .toBuffer();
 
-    // Bigger, cleaner watermark (now properly visible)
+    // Improved watermark – bigger, more transparent background, safe fonts
     const watermarkSVG = `
 <svg width="1080" height="1920" xmlns="http://www.w3.org/2000/svg">
-    <rect x="0" y="1720" width="1080" height="200" fill="#111111" opacity="0.95"/>
-    <text x="70" y="1800" font-family="sans-serif" font-size="110" fill="#fffc00">📸</text>
-    <text x="220" y="1795" font-family="Arial Black, sans-serif" font-size="78" fill="#fffc00" font-weight="900" letter-spacing="-2">StoryQueue</text>
-    <text x="220" y="1870" font-family="Arial, sans-serif" font-size="42" fill="#ffffff">storyqueue.netlify.app</text>
+    <rect x="0" y="1720" width="1080" height="200" fill="#111111" opacity="0.75"/>
+    <text x="70" y="1805" font-family="sans-serif" font-size="120" fill="#fffc00">📸</text>
+    <text x="230" y="1800" font-family="Helvetica, Arial Black, sans-serif" font-size="82" fill="#fffc00" font-weight="900" letter-spacing="-1">StoryQueue</text>
+    <text x="230" y="1875" font-family="Helvetica, Arial, sans-serif" font-size="44" fill="#ffffff" letter-spacing="0.5">storyqueue.netlify.app</text>
 </svg>`;
 
     const watermarkBuffer = Buffer.from(watermarkSVG);
@@ -66,7 +66,7 @@ exports.handler = async (event) => {
         }
     } catch (e) {}
 
-    // Timestamp in Denmark (Europe/Copenhagen)
+    // Denmark timestamp
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Europe/Copenhagen',
