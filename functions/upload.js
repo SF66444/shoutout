@@ -19,10 +19,9 @@ exports.handler = async (event) => {
         return { statusCode: 500, body: JSON.stringify({ error: "Server configuration missing" }) };
     }
 
-    // Decode base64
     const buffer = Buffer.from(base64, 'base64');
 
-    // 1. Resize to exact Snapchat story size 1080×1920 (cover = crop to fill)
+    // Resize to exact 1080×1920 Snapchat story size
     let processed = await sharp(buffer)
         .resize({
             width: 1080,
@@ -32,13 +31,13 @@ exports.handler = async (event) => {
         })
         .toBuffer();
 
-    // 2. Add StoryQueue watermark at the bottom
+    // Bigger, cleaner watermark (now properly visible)
     const watermarkSVG = `
 <svg width="1080" height="1920" xmlns="http://www.w3.org/2000/svg">
-    <rect x="0" y="1770" width="1080" height="150" fill="#111111" opacity="0.9"/>
-    <text x="80" y="1845" font-family="sans-serif" font-size="90" fill="#fffc00">📸</text>
-    <text x="200" y="1835" font-family="Arial Black,sans-serif" font-size="52" fill="#fffc00" font-weight="700">StoryQueue</text>
-    <text x="200" y="1890" font-family="Arial,sans-serif" font-size="32" fill="#ffffff">storyqueue.netlify.app</text>
+    <rect x="0" y="1720" width="1080" height="200" fill="#111111" opacity="0.95"/>
+    <text x="70" y="1800" font-family="sans-serif" font-size="110" fill="#fffc00">📸</text>
+    <text x="220" y="1795" font-family="Arial Black, sans-serif" font-size="78" fill="#fffc00" font-weight="900" letter-spacing="-2">StoryQueue</text>
+    <text x="220" y="1870" font-family="Arial, sans-serif" font-size="42" fill="#ffffff">storyqueue.netlify.app</text>
 </svg>`;
 
     const watermarkBuffer = Buffer.from(watermarkSVG);
@@ -67,30 +66,25 @@ exports.handler = async (event) => {
         }
     } catch (e) {}
 
-    // Timestamp in Denmark time (Europe/Copenhagen)
+    // Timestamp in Denmark (Europe/Copenhagen)
     const now = new Date();
     const formatter = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Europe/Copenhagen',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        day: '2-digit',
-        month: '2-digit',
-        year: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        day: '2-digit', month: '2-digit', year: '2-digit',
         hour12: false
     });
     const parts = formatter.formatToParts(now);
-    const hour = parts.find(p => p.type === 'hour').value;
-    const minute = parts.find(p => p.type === 'minute').value;
-    const second = parts.find(p => p.type === 'second').value;
-    const day = parts.find(p => p.type === 'day').value;
-    const month = parts.find(p => p.type === 'month').value;
-    const year = parts.find(p => p.type === 'year').value.slice(-2);
-    const timestamp = `${hour}${minute}${second}${day}${month}${year}`;
+    const h = parts.find(p => p.type === 'hour').value;
+    const m = parts.find(p => p.type === 'minute').value;
+    const s = parts.find(p => p.type === 'second').value;
+    const d = parts.find(p => p.type === 'day').value;
+    const mo = parts.find(p => p.type === 'month').value;
+    const y = parts.find(p => p.type === 'year').value.slice(-2);
+    const timestamp = `${h}${m}${s}${d}${mo}${y}`;
 
     const filename = `${nextNum}_${timestamp}.jpg`;
 
-    // Upload to GitHub
     const uploadRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/storyqueue/${filename}`, {
         method: "PUT",
         headers: {
@@ -99,7 +93,7 @@ exports.handler = async (event) => {
             Accept: "application/vnd.github.v3+json"
         },
         body: JSON.stringify({
-            message: `📸 Shoutout: ${filename}`,
+            message: `📸 Photo upload: ${filename}`,
             content: finalImage.toString('base64'),
             branch: "main"
         })
