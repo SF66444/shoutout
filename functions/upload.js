@@ -1,4 +1,6 @@
 const sharp = require('sharp');
+const fs = require('fs');
+const path = require('path');
 
 exports.handler = async (event) => {
     if (event.httpMethod !== "POST") {
@@ -21,7 +23,7 @@ exports.handler = async (event) => {
 
     const buffer = Buffer.from(base64, 'base64');
 
-    // Resize to exact Snapchat 1080×1920
+    // Resize to exact Snapchat story size
     let processed = await sharp(buffer)
         .resize({
             width: 1080,
@@ -31,19 +33,12 @@ exports.handler = async (event) => {
         })
         .toBuffer();
 
-    // Improved watermark – bigger, more transparent background, safe fonts
-    const watermarkSVG = `
-<svg width="1080" height="1920" xmlns="http://www.w3.org/2000/svg">
-    <rect x="0" y="1720" width="1080" height="200" fill="#111111" opacity="0.75"/>
-    <text x="70" y="1805" font-family="sans-serif" font-size="120" fill="#fffc00">📸</text>
-    <text x="230" y="1800" font-family="Helvetica, Arial Black, sans-serif" font-size="82" fill="#fffc00" font-weight="900" letter-spacing="-1">StoryQueue</text>
-    <text x="230" y="1875" font-family="Helvetica, Arial, sans-serif" font-size="44" fill="#ffffff" letter-spacing="0.5">storyqueue.netlify.app</text>
-</svg>`;
-
-    const watermarkBuffer = Buffer.from(watermarkSVG);
+    // Load your static watermark.png (foolproof – no fonts)
+    const watermarkPath = path.join(__dirname, 'watermark.png');
+    const watermarkBuffer = fs.readFileSync(watermarkPath);
 
     const finalImage = await sharp(processed)
-        .composite([{ input: watermarkBuffer, top: 0, left: 0 }])
+        .composite([{ input: watermarkBuffer, top: 1720, left: 0 }])   // positions it at the bottom
         .jpeg({ quality: 92 })
         .toBuffer();
 
