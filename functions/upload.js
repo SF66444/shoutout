@@ -1,3 +1,5 @@
+const sharp = require('sharp');
+
 exports.handler = async (event) => {
     if (event.httpMethod !== "POST") {
         return { statusCode: 405, body: JSON.stringify({ error: "Method not allowed" }) };
@@ -5,7 +7,6 @@ exports.handler = async (event) => {
 
     const { base64, mimeType } = JSON.parse(event.body);
 
-    // Basic server-side validation (same as frontend)
     if (!["image/png", "image/jpeg"].includes(mimeType)) {
         return { statusCode: 400, body: JSON.stringify({ error: "Only PNG, JPG and JPEG allowed" }) };
     }
@@ -18,16 +19,41 @@ exports.handler = async (event) => {
         return { statusCode: 500, body: JSON.stringify({ error: "Server configuration missing" }) };
     }
 
-    // Get next number (or 1 if folder doesn't exist yet)
+    // Decode base64
+    const buffer = Buffer.from(base64, 'base64');
+
+    // 1. Resize to exact Snapchat story size 1080×1920 (cover = crop to fill)
+    let processed = await sharp(buffer)
+        .resize({
+            width: 1080,
+            height: 1920,
+            fit: 'cover',
+            position: 'center'
+        })
+        .toBuffer();
+
+    // 2. Add StoryQueue watermark at the bottom
+    const watermarkSVG = `
+<svg width="1080" height="1920" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="1770" width="1080" height="150" fill="#111111" opacity="0.9"/>
+    <text x="80" y="1845" font-family="sans-serif" font-size="90" fill="#fffc00">📸</text>
+    <text x="200" y="1835" font-family="Arial Black,sans-serif" font-size="52" fill="#fffc00" font-weight="700">StoryQueue</text>
+    <text x="200" y="1890" font-family="Arial,sans-serif" font-size="32" fill="#ffffff">storyqueue.netlify.app</text>
+</svg>`;
+
+    const watermarkBuffer = Buffer.from(watermarkSVG);
+
+    const finalImage = await sharp(processed)
+        .composite([{ input: watermarkBuffer, top: 0, left: 0 }])
+        .jpeg({ quality: 92 })
+        .toBuffer();
+
+    // Get next number
     let nextNum = 1;
     try {
         const listRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/storyqueue`, {
-            headers: {
-                Authorization: `token ${TOKEN}`,
-                Accept: "application/vnd.github.v3+json"
-            }
+            headers: { Authorization: `token ${TOKEN}`, Accept: "application/vnd.github.v3+json" }
         });
-
         if (listRes.ok) {
             const files = await listRes.json();
             let max = 0;
@@ -39,18 +65,30 @@ exports.handler = async (event) => {
             });
             nextNum = max + 1;
         }
-        // if 404 → folder doesn't exist yet → nextNum stays 1
-    } catch (e) {
-        // folder doesn't exist yet → start at 1
-    }
+    } catch (e) {}
 
-    // Generate timestamp HHMMSSDDMMYY
+    // Timestamp in Denmark time (Europe/Copenhagen)
     const now = new Date();
-    const pad = n => n.toString().padStart(2, "0");
-    const timestamp = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${pad(now.getDate())}${pad(now.getMonth() + 1)}${now.getFullYear().toString().slice(2)}`;
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Europe/Copenhagen',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        day: '2-digit',
+        month: '2-digit',
+        year: '2-digit',
+        hour12: false
+    });
+    const parts = formatter.formatToParts(now);
+    const hour = parts.find(p => p.type === 'hour').value;
+    const minute = parts.find(p => p.type === 'minute').value;
+    const second = parts.find(p => p.type === 'second').value;
+    const day = parts.find(p => p.type === 'day').value;
+    const month = parts.find(p => p.type === 'month').value;
+    const year = parts.find(p => p.type === 'year').value.slice(-2);
+    const timestamp = `${hour}${minute}${second}${day}${month}${year}`;
 
-    const ext = mimeType === "image/png" ? "png" : "jpg";
-    const filename = `${nextNum}_${timestamp}.${ext}`;
+    const filename = `${nextNum}_${timestamp}.jpg`;
 
     // Upload to GitHub
     const uploadRes = await fetch(`https://api.github.com/repos/${OWNER}/${REPO}/contents/storyqueue/${filename}`, {
@@ -61,8 +99,8 @@ exports.handler = async (event) => {
             Accept: "application/vnd.github.v3+json"
         },
         body: JSON.stringify({
-            message: `📸 Public upload: ${filename}`,
-            content: base64,
+            message: `📸 Shoutout: ${filename}`,
+            content: finalImage.toString('base64'),
             branch: "main"
         })
     });
@@ -72,8 +110,5 @@ exports.handler = async (event) => {
         return { statusCode: 500, body: JSON.stringify({ error: err.message || "GitHub upload failed" }) };
     }
 
-    return {
-        statusCode: 200,
-        body: JSON.stringify({ filename })
-    };
+    return { statusCode: 200, body: JSON.stringify({ filename }) };
 };
